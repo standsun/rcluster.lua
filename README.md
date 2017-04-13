@@ -1,6 +1,8 @@
 # Name
 
-rcluster - lua redis cluster client driver
+`rcluster` - lua redis cluster client driver
+
+# Table of Contents
 
 * [Name](#name)
 * [Description](#description)
@@ -16,8 +18,6 @@ rcluster - lua redis cluster client driver
 * [Issues](#issues)
 * [TODO](#todo)
 
-
-
 # Description
 
 The lua library is a redis client driver that support redis cluster
@@ -25,9 +25,8 @@ The lua library is a redis client driver that support redis cluster
 
 The library takes advantage of [lua-resty-redis](https://github.com/agentzh) and [luacrc16](https://github.com/youlu-cn/luacrc16) :
 
-[lua-resty-redis](https://github.com/agentzh) - Lua redis client driver which written by [agentzh](https://github.com/agentzh)
-
-[luacrc16](https://github.com/youlu-cn/luacrc16) - crc16 for lua which written by [youlu-cn](https://github.com/youlu-cn)
+* [lua-resty-redis](https://github.com/agentzh) - Lua redis client driver which written by [agentzh](https://github.com/agentzh)
+* [luacrc16](https://github.com/youlu-cn/luacrc16) - crc16 for lua which written by [youlu-cn](https://github.com/youlu-cn)
 
 `Note:` Recommended to use the lua library in [openresty](https://github.com/openresty/openresty) environment
 
@@ -36,7 +35,7 @@ The library takes advantage of [lua-resty-redis](https://github.com/agentzh) and
 The following steps assume that the openresty environment have been ok and the installation path is `/usr/local/openresty/`
 
 
-#### Compile luacrc16
+### Compile luacrc16
 
 ```shell
 git clone https://github.com/youlu-cn/luacrc16.git
@@ -45,7 +44,7 @@ gcc crc16.c -fPIC -shared -o crc16.so
 mv crc16.so /usr/local/openresty/lualib/
 ```
 
-Note:
+`Note:`
 
 * If prompted lua.h lualib.h lauxlib.h does not exist when compiling, modify the crc16.c include path to absolute path.
 
@@ -63,15 +62,19 @@ Note:
 
 * If the server has multiple luajit environment, recommended to use the openresty luajit.
 
-* Paste the generated crc16.so to the lua_package_cpath supported directory (there paste to `/usr/local/openresty/lualib/`).
+* Paste the generated `crc16.so` to the lua_package_cpath supported directory (there paste to `/usr/local/openresty/lualib/`).
 
-#### Install rcluster
+[Back to TOC](#table-of-contents)
+
+### Install rcluster
 
 ```
 git clone https://github.com/standsun/rcluster.lua.git
 cd rcluster.lua
 mv rcluster.lua /usr/local/openresty/lualib/resty/rcluster.lua
 ```
+
+[Back to TOC](#table-of-contents)
 
 # Methods
 
@@ -100,9 +103,11 @@ local common_cmds = {
 }
 ```
 
+[Back to TOC](#table-of-contents)
+
 # Example
 
-#### Init
+### Init
 
 ```lua
 local rcluster = require 'resty.rcluster'
@@ -112,7 +117,7 @@ local redis = rcluster:new({
     --auth                = 'password',   -- auth(auth)，可选，默认nil
     --keepalive_timeout   = 10000,        -- 连接池的响应时间（毫秒） 可选，默认10000
     --max_connections     = 100,          -- 连接池最大连接数，可选，默认 100
-    server  = {							  -- 必选，获取slots信息
+    server  = {                              -- 必选，获取slots信息
         { host = "192.168.0.11", port = 6525 },
         { host = "192.168.0.12", port = 6525 },
         { host = "192.168.0.13", port = 6525 },
@@ -120,13 +125,15 @@ local redis = rcluster:new({
 })
 ```
 
-#### Operate a key
+### Operate a key
 
 ```lua
 local res,err = redis:hget("user_info_1000","username")
 ```
 
-#### Operate multiple keys
+[Back to TOC](#table-of-contents)
+
+### Operate multiple keys
 
 ```lua
 redis:init_pipeline()
@@ -138,6 +145,10 @@ redis:hget("user_info_1002","username")
 local res,err = redis:commit_pipeline()
 ```
 
-# Issues
+[Back to TOC](#table-of-contents)
+
+# Issues 
 
 # TODO
+
+[Back to TOC](#table-of-contents)
