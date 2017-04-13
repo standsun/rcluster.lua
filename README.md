@@ -152,3 +152,7 @@ local res,err = redis:commit_pipeline()
 # TODO
 
 [Back to TOC](#table-of-contents)
+
+# MORE
+
+* [lua-resty-redis-cluster](https://github.com/cuiweixie/lua-resty-redis-cluster) - another openresty redis cluster client wrotten by [cuiweixie](https://github.com/cuiweixie)
