@@ -1,19 +1,16 @@
--- Create by sunbingchao@le.com 2017-04-11 16:24
+-- Copyright (C) standsun@126.com
 
-local setmetatable = setmetatable
-local rawget = rawget
-local randomseed = math.randomseed
-local random = math.random
+local setmetatable  = setmetatable
+local rawget        = rawget
+local redis         = require "resty.redis"
+local crc16         = require 'crc16'
 
-local redis = require "resty.redis"
-
-local crc16 = require 'crc16'
+node_cache = {}
 
 local _M = { 
     _VERSION = '0.01',
-    cfg      = {},
+    cfg      = {}
 }
-
 
 function _M.new(self, cfg)
     self.cfg["auth"]    = cfg.auth      or nil
@@ -21,29 +18,37 @@ function _M.new(self, cfg)
     self.cfg["timeout"] = cfg.timeout   or 10000
     self.cfg.server     = cfg.server[ math.random(1, #cfg["server"]) ] or nil
 
-    local red, err = self:connect(self.cfg.server.host, self.cfg.server.port)
+    local ostime, nodes = os.time(), {}
+    if node_cache[ostime] then
+        nodes = node_cache[ostime]
+    else
+        local red, err = self:connect(self.cfg.server.host, self.cfg.server.port)
 
-    local nodes = {}
-    if not err then
-        local res, err = red:cluster('slots')
-        for i,node in pairs(res) do
-            nodes[i] = {
-                min_hash_slot = node[1],
-                max_hash_slot = node[2],
-                host          = node[3][1],
-                port          = node[3][2]
-            }
+        if not err then
+            local res, err = red:cluster('slots')
+            for i,node in pairs(res) do
+                nodes[i] = {
+                    min_hash_slot = node[1],
+                    max_hash_slot = node[2],
+                    host          = node[3][1],
+                    port          = node[3][2]
+                }
+            end
         end
+
+        self:close(red)
+
+        node_cache = {}
+        node_cache[ostime] = nodes
     end
-    self:close(red)
 
     return setmetatable({ nodes = nodes }, { __index = _M })
 end
 
 function _M.connect(self, host, port)
     local red = redis:new()
-    local ok, err = red:connect(host, port)
-    if not ok then
+    local res, err = red:connect(host, port)
+    if not res then
         return nil, err
     end
 
@@ -66,23 +71,17 @@ function _M.connect(self, host, port)
     return red
 end
 
--- 关闭连接
--- 保持连接并将连接归还到连接池中，下次连接会先去连接池中找
 function _M:close(red)
     if not red or type(red) ~= 'table' then
         return nil, "error redis handle type :" .. type(red)
     end
 
-    local ok,err = red:set_keepalive(
-        self.cfg.keepalive_timeout or 10000,
-        self.cfg.max_connections or 100
+    local res, err = red:set_keepalive(
+        self.cfg.keepalive_timeout  or 10000,
+        self.cfg.max_connections    or 100
     )
 
-    if not ok then
-        ngx.ctx.loger:error({
-            err     = err,
-            message = 'mysql close set_keepalive error'
-        })
+    if not res then
         return nil,err
     end
 end
@@ -90,11 +89,9 @@ end
 function _M._do_cmd(self, cmd, key, ...)
     local node = self.get_node(self, key)
 
-    local res, err
-    local reqs = rawget(self,'_reqs')
+    local reqs = rawget(self, '_reqs')
     if reqs then
         local hash = node.host..":"..node.port
-
         local req = reqs[hash]
         if not req then
             req = {
@@ -113,20 +110,18 @@ function _M._do_cmd(self, cmd, key, ...)
             arg = {...},
             counter = self._reqs_counter
         }
-
         self._reqs[hash] = req
-
         self._reqs_counter = self._reqs_counter + 1
     else
-        red, err = self:connect(node.host, node.port)
-        if err then return red, err end
-
-        res, err = red[cmd](red, key, ...)
-
+        local red, err = self:connect(node.host, node.port)
+        if not red then 
+            return nil, err 
+        end
+        local res, err = red[cmd](red, key, ...)
         self:close(red)
+
+        return res, err
     end
-    
-    return res, err
 end
 
 function _M.init_pipeline(self)
@@ -136,35 +131,35 @@ end
 
 function _M.cancel_pipeline(self)
     self._reqs = nil
-    self._reqs_counter = 1
+    self._reqs_counter = 0
 end
 
 function _M.commit_pipeline(self)
     local reqs = rawget(self,"_reqs")
-
     if not reqs or type(reqs) ~= 'table' or reqs == {} then
         return nil, "request not exists"
     end
 
-    local res = {}, red, err
-
+    local res, red, err = {}, nil, nil
     for i, req in pairs(reqs) do
         if #req.cmds > 0  then
             red, err = self:connect(req.node.host, req.node.port)
-            if err then return red, err end
+            if err then 
+                return red, err 
+            end
 
             red:init_pipeline()
-            for i,cmd in pairs(req.cmds) do
+            for i, cmd in pairs(req.cmds) do
                 if #cmd.arg > 0 then
                     red[cmd.cmd](red, cmd.key, unpack(cmd.arg))
                 else
                     red[cmd.cmd](red, cmd.key)
                 end
             end
-            local result, err = red:commit_pipeline()
 
+            local res_data, err = red:commit_pipeline()
             for i, cmd in pairs(req.cmds) do
-                res[cmd.counter] = result[i]
+                res[cmd.counter] = res_data[i]
             end
 
             self:close(red)
@@ -186,10 +181,10 @@ end
 
 setmetatable(_M, {
     __index = function(self, cmd) 
-
         local method = function(self, ...)
             return self._do_cmd(self, cmd, ...)
         end
+
         return method
     end
 })
