@@ -23,9 +23,9 @@
 The lua library is a redis client driver that support redis cluster
 
 
-The library takes advantage of [lua-resty-redis](https://github.com/agentzh) and [luacrc16](https://github.com/youlu-cn/luacrc16) :
+The library takes advantage of [https://github.com/openresty/lua-resty-redis](https://github.com/agentzh) and [luacrc16](https://github.com/youlu-cn/luacrc16) :
 
-* [lua-resty-redis](https://github.com/agentzh) - Lua redis client driver which written by [agentzh](https://github.com/agentzh)
+* [lua-resty-redis](https://github.com/openresty/lua-resty-redis) - Lua redis client driver which written by [agentzh](https://github.com/agentzh)
 * [luacrc16](https://github.com/youlu-cn/luacrc16) - crc16 for lua which written by [youlu-cn](https://github.com/youlu-cn)
 
 `Note:` Recommended to use the lua library in [openresty](https://github.com/openresty/openresty) environment
@@ -113,11 +113,12 @@ local common_cmds = {
 local rcluster = require 'resty.rcluster'
 
 local redis = rcluster:new({
-    --db                  = 2,            -- select(db)，可选，默认0
-    --auth                = 'password',   -- auth(auth)，可选，默认nil
-    --keepalive_timeout   = 10000,        -- 连接池的响应时间（毫秒） 可选，默认10000
-    --max_connections     = 100,          -- 连接池最大连接数，可选，默认 100
-    server  = {                              -- 必选，获取slots信息
+    --name                = "myproject",  -- optional, default value: default
+    --auth                = 'password',   -- optional, default value: nil
+    --timeout             = 1000,         -- optional, default value: 3000 ms
+    --keep_time           = 10000,        -- optional, default value: 10000 ms
+    --keep_size           = 100,          -- optional, default value: 100
+    server  = {                           -- required
         { host = "192.168.0.11", port = 6525 },
         { host = "192.168.0.12", port = 6525 },
         { host = "192.168.0.13", port = 6525 },
@@ -149,10 +150,10 @@ local res,err = redis:commit_pipeline()
 
 # Issues 
 
-# TODO
+# Todo
 
 [Back to TOC](#table-of-contents)
 
-# MORE
+# More
 
 * [lua-resty-redis-cluster](https://github.com/cuiweixie/lua-resty-redis-cluster) - another openresty redis cluster client wrotten by [cuiweixie](https://github.com/cuiweixie)

@@ -5,6 +5,7 @@ local rawget        = rawget
 local redis         = require "resty.redis"
 local crc16         = require 'crc16'
 
+-- global var
 node_cache = {}
 
 local _M = { 
@@ -13,14 +14,16 @@ local _M = {
 }
 
 function _M.new(self, cfg)
-    self.cfg["auth"]    = cfg.auth      or nil
-    self.cfg["db"]      = cfg.db        or 0
-    self.cfg["timeout"] = cfg.timeout   or 10000
+    self.cfg.name       = cfg.name      or 'default'
+    self.cfg.auth       = cfg.auth      or nil
+    self.cfg.timeout    = cfg.timeout   or 3000
+    self.cfg.keep_time  = cfg.keep_time or 10000
+    self.cfg.keep_size  = cfg.keep_size or 100
     self.cfg.server     = cfg.server[ math.random(1, #cfg["server"]) ] or nil
 
-    local ostime, nodes = os.time(), {}
-    if node_cache[ostime] then
-        nodes = node_cache[ostime]
+    local ostime, nodes, name = os.time(), {}, self.cfg.name
+    if node_cache[name] and node_cache[name][ostime] then
+        nodes = node_cache[name][ostime]
     else
         local red, err = self:connect(self.cfg.server.host, self.cfg.server.port)
 
@@ -38,8 +41,8 @@ function _M.new(self, cfg)
 
         self:close(red)
 
-        node_cache = {}
-        node_cache[ostime] = nodes
+        node_cache[name] = {}
+        node_cache[name][ostime] = nodes
     end
 
     return setmetatable({ nodes = nodes }, { __index = _M })
@@ -47,19 +50,15 @@ end
 
 function _M.connect(self, host, port)
     local red = redis:new()
+
+    red:set_timeout(self.cfg.timeout)
+
     local res, err = red:connect(host, port)
     if not res then
         return nil, err
     end
 
     if self.cfg.auth then
-        local res, err = red:auth(self.cfg.auth)
-        if not res then
-            return nil, err
-        end
-    end
-
-    if self.cfg.db and self.cfg.db > 0 then
         local res, err = red:auth(self.cfg.auth)
         if not res then
             return nil, err
@@ -77,8 +76,8 @@ function _M:close(red)
     end
 
     local res, err = red:set_keepalive(
-        self.cfg.keepalive_timeout  or 10000,
-        self.cfg.max_connections    or 100
+        self.cfg.keep_time,
+        self.cfg.keep_size
     )
 
     if not res then
@@ -88,6 +87,9 @@ end
 
 function _M._do_cmd(self, cmd, key, ...)
     local node = self.get_node(self, key)
+    if not node then
+        return nil, 'node not exits'
+    end
 
     local reqs = rawget(self, '_reqs')
     if reqs then
@@ -118,6 +120,7 @@ function _M._do_cmd(self, cmd, key, ...)
             return nil, err 
         end
         local res, err = red[cmd](red, key, ...)
+
         self:close(red)
 
         return res, err
