@@ -21,7 +21,7 @@ function _M.new(self, cfg)
     self.cfg.keep_size  = cfg.keep_size or 100
     self.cfg.server     = cfg.server[ math.random(1, #cfg["server"]) ] or nil
 
-    local ostime, nodes, name = os.time(), {}, self.cfg.name
+    local ostime, nodes, name = ngx.time(), {}, self.cfg.name
     if node_cache[name] and node_cache[name][ostime] then
         nodes = node_cache[name][ostime]
     else
