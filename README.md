@@ -15,7 +15,7 @@
     * [Operate a key](#operate-a-key)
     * [Operate multiple keys](#operate-multiple-keys)
 * [Stress Testing](#stress-testing)
-    * [web server and redis cluster environment](#web server and redis cluster environment)
+    * [web server and redis cluster environment](#web-server-and-redis-cluster-environment)
     * [Pressure measuring result](#pressure-measuring-result)
 * [Issues](#issues)
 * [TODO](#todo)
