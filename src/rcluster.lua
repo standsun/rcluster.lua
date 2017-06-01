@@ -5,6 +5,8 @@ local rawget        = rawget
 local redis         = require "resty.redis"
 local crc16         = require 'crc16'
 
+redis:add_commands("cluster")
+
 -- global var
 node_cache = {}
 
@@ -45,13 +47,13 @@ function _M.new(self, cfg)
         node_cache[name][ostime] = nodes
     end
 
+    redis:set_timeout(self.cfg.timeout)
+
     return setmetatable({ nodes = nodes }, { __index = _M })
 end
 
 function _M.connect(self, host, port)
     local red = redis:new()
-
-    red:set_timeout(self.cfg.timeout)
 
     local res, err = red:connect(host, port)
     if not res then
@@ -64,8 +66,6 @@ function _M.connect(self, host, port)
             return nil, err
         end
     end
-
-    red:add_commands("cluster")
 
     return red
 end
